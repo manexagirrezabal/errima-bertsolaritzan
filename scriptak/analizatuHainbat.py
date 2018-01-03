@@ -27,8 +27,11 @@ print "eta bertso bakoitzean ",[len(bertso) for bertso in bertsoak], " lerro"
 
 
 for bertso in bertsoak:
-  emaitza = sailkatzaileKlase.ikusiErrima("\n".join(bertso))
+  try:
+    emaitza = sailkatzaileKlase.ikusiErrima("\n".join(bertso))
+  except ValueError:
+    emaitza = "ERROREA"
   for lerro in bertso:
-    print lerro
+    print lerro.encode("utf8")
   print "Analisia: "+"-".join(emaitza)
   print 
