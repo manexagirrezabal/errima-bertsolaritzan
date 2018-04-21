@@ -8,7 +8,6 @@ txt=f.read().decode("utf8")
 txt = re.sub(r'\n\s*\n\s*\n', '\n\n', txt).rstrip()
 lines = txt.split("\n")
 f.close()
-
 of = sys.argv[2] #Irteera fitxategia
 
 #print lines

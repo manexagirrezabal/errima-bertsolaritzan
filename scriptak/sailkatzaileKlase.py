@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import sys
 import string
@@ -17,8 +19,12 @@ import re
 #         return max(li, key=len)
 
 
+eine="ñ".decode("utf8")
 def removePunct (word):
     return re.sub ("[^\w\s\-\']", "", word)
+
+def removePunct_spaces (word):
+    return re.sub ("[^\w\-\'"+eine+"]", "", word)
 
 legeFonetikoak = [("tx","S"),
                   ("ts","S"),
@@ -35,7 +41,10 @@ legeFonetikoak = [("tx","S"),
                   ("g","B"),
                   ("r","B"),
                   ("m","N"),
-                  ("n","N")]
+                  ("n","N"),
+                  ("ñ","iN")]
+legeFonetikoak = [(lege[0].decode("utf8"), lege[1]) for lege in legeFonetikoak]
+
 bukaerak="a ak an ean ian ez ik k ko koak n ra rat rik ta tik tzen z".decode("utf8").split(" ") #Orijinala
 tartekoak="ai e i l n m o oi r u s z ts tz tx R".decode("utf8").split(" ") #Orijinala
 aurrekoak="a ai b d g r alb ald alg e eb ed eg er i is iz o oi op ot ok osp ost osk ozp ozt ozk t k R s z x ts tz tx st sk zt zk u".decode("utf8").split(" ") #Orijinala
@@ -162,7 +171,7 @@ def ikusiErrima(bertsoa, legeFonetikoak=legeFonetikoak, aurrekoak=aurrekoak, tar
   return (aurrekoLuzeena,tartekoluzeena,bukaeraluzeena)
 
 def ikusiErrimaBerria(bertsoa, legeFonetikoak=legeFonetikoak, aurrekoak=aurrekoak, tartekoak=tartekoak, bukaerak=bukaerak):
-  lines=[removePunct(line).replace(" ","") for line in bertsoa.split("\n")]
+  lines=[removePunct_spaces(line) for line in bertsoa.split("\n")]
   linesFonetizatuak = [legeFonetikoakAplikatu(line) for line in lines]
 
   bikoitiak=[line for indline,line in enumerate(lines) if indline %2 !=0]
@@ -195,13 +204,94 @@ def ikusiErrimaBerria(bertsoa, legeFonetikoak=legeFonetikoak, aurrekoak=aurrekoa
 
   #BILATU TARTEKOAK
   bertsokoTartekoak=set(tartekoakFonetizatuta)
-  for line in bikoitiFonetizatuak:
-    lerrokoTartekoak = [tarteko for tarteko in tartekoakFonetizatuta if line.endswith(tarteko)]
+  bertsokoTartekoakZerrenda_pos=[]
+  for indline,line in enumerate(bikoitiFonetizatuak):
+    lerrokoTartekoak_tupla = [(tarteko,indline) for tarteko in tartekoakFonetizatuta if line.endswith(tarteko)]
+    lerrokoTartekoak = [t[0] for t in lerrokoTartekoak_tupla]
+
+    #Honek lerro bakoitzean dauden tarteko posibleak itzuliko dizkigu.
+    #Hauek zerrenda batean sartu behar ditugu gero horiekin jolastu ahal izateko.
+    if (len(lerrokoTartekoak)==0):
+      bertsokoTartekoakZerrenda_pos.extend([(line[-1],indline)])
+    else:
+      bertsokoTartekoakZerrenda_pos.extend(lerrokoTartekoak_tupla)
+    tartekoBakanak= set(lerrokoTartekoak)
+
     bertsokoTartekoak = bertsokoTartekoak.intersection(set(lerrokoTartekoak))
+
+
+
+  tartpos = set([buk[0] for buk in bertsokoTartekoakZerrenda_pos])
+  bertsokoTartekoakZerrenda = [buk[0] for buk in bertsokoTartekoakZerrenda_pos]
+  tarteko_maizt = [(tart, bertsokoTartekoakZerrenda.count(tart)) for tart in tartpos]
+  kengarri = min(tarteko_maizt,  key= lambda t: t[1]) #Preszindiblea den letra eta bere lerro zenbakia bilatu
+  kenezin = max(tarteko_maizt,  key= lambda t: t[1]) 
+
+  #Kengarria eta kenezina kalkulatuta, ideia honakoa da.
+  #Kengarria apeta, seka, gerta... bezalako kasuetan agertzen den "r" letra izango da
+  #Kenezina, berriz, "e" letra. Orain, egingo duguna da "r" hori agertzen den bakoitzean,
+  #hori kendu eta ea "e" bat lor dezakegun ikusi.
+  #Nahiko ad-hoc soluzioa da, baina gure arazoa konpon dezakelakoan nago. Ikus dezagun!
+
+
+
+  #Ondo! Orain kasuistikaren arabera jokatu behar dugu.
+  #1.- Batetik, kasu arruntetan horrelakoak izango ditugu:
+  #[[(u'B', 0)], [(u'B', 1)], [(u'B', 2)], [(u'B', 3)]]
+# Zazpi neskatill eder
+# aukera-maukeran
+# Ortik pentsatu zuek
+# nolakuak geran;
+# Azpillaga, jarri bear
+# neskatako eran,
+# orain epoka dek eta
+# ia saiatzen geran.
+  #2.- Kasu berezixeagoa litzateke:
+  #[[(u'a', 0)], [(u'Pa', 1), (u'a', 1)], [(u'a', 2)], [(u'Pa', 3), (u'a', 3)]]
+# Ez dezu ondo gaurkoz dantzatu,
+# aita, zeorren mingaina,
+# amak umea maitatutzen du
+# sarri aita batek aina;
+# zuregandikan apartatzeko
+# gogua badaukat baina,
+# nik ere errez jaso niteke
+# nere semetxo apaina.
+  #3.-eta are bereziagoa, baina tratatu beharrekoa:
+  #[[(u'e', 0)], [(u'B', 1)], [(u'e', 2)], [(u'e', 3)]]
+  #Ez dauka zertan beharra izan
+# izan liteke apeta
+# nik azalpenik eman beharrik
+# ez daukat baina zer gerta.
+# Agur laztana joan egin behar dut
+# agenda daukat beteta
+# Strauss-Khan eta bere lagunak
+# zerbitu behar ditut eta.
+
+
   if len(bertsokoTartekoak)!=0:
   	tartekoKomunLuzeena = max(bertsokoTartekoak, key=len)
   else:
   	tartekoKomunLuzeena=""
+
+  if tartekoKomunLuzeena=="": #Ez badugu komunik topatu, badaezpada ere, errebisio malguago bat
+      for buk,indline in bertsokoTartekoakZerrenda_pos:
+        if (buk==kengarri[0]):
+          unekoLerroGarbitua=bikoitiFonetizatuak[indline][:-len(kengarri[0])] #Aztertu uneko lerroa, kengarria kenduta.
+          lerrokoTartekoak_tupla = [(tarteko,indline) for tarteko in tartekoakFonetizatuta if unekoLerroGarbitua.endswith(tarteko)]
+          lerrokoTartekoak = [t[0] for t in lerrokoTartekoak_tupla]
+          tartekoBakanak= list(set(lerrokoTartekoak))
+
+          #Topatu dugun elementua kenezinaren berdina bada, bai!!
+          #Hori da tarteko posible bat
+          if (tartekoBakanak[0]==kenezin[0]):
+            tartekoKomunLuzeena=tartekoBakanak[0]
+            bikoitiFonetizatuak[indline]=bikoitiFonetizatuak[indline][:-len(kengarri[0])]
+
+
+
+
+
+
 #  print (tartekoKomunLuzeena)
   tartekoarenLuzera=len(tartekoKomunLuzeena)
 
@@ -213,15 +303,74 @@ def ikusiErrimaBerria(bertsoa, legeFonetikoak=legeFonetikoak, aurrekoak=aurrekoa
 
   #BILATU AURREKOAK
   bertsokoAurrekoak=set(aurrekoakFonetizatuta)
-  for line in bikoitiFonetizatuak:
-    lerrokoAurrekoak = [aurreko for aurreko in aurrekoakFonetizatuta if line.endswith(aurreko)]
+  bertsokoAurrekoakZerrenda_pos=[]
+  for indline, line in enumerate(bikoitiFonetizatuak):
+    lerrokoAurrekoak_tupla = [(aurreko, indline) for aurreko in aurrekoakFonetizatuta if line.endswith(aurreko)]
+    lerrokoAurrekoak = [t[0] for t in lerrokoAurrekoak_tupla]
     bertsokoAurrekoak = bertsokoAurrekoak.intersection(set(lerrokoAurrekoak))
+
+
+    #Honek lerro bakoitzean dauden tarteko posibleak itzuliko dizkigu.
+    #Hauek zerrenda batean sartu behar ditugu gero horiekin jolastu ahal izateko.
+    #Oraintxe arazo bat topatu dut, adibidez:
+    #bertatik-faltik
+    #"l" letra hori ez da aurrekoen zerrendan azaltzen, beraz, sistema ez da gai hori aurkitzeko
+    #Soluzio merke bat, karaktere bat kendu, ea zer gertatzen den ikusteko
+    #Kasu horretan funtzionatzen du
+    if (len(lerrokoAurrekoak)==0):
+      bertsokoAurrekoakZerrenda_pos.extend([(line[-1],indline)])
+    else:
+      bertsokoAurrekoakZerrenda_pos.extend(lerrokoAurrekoak_tupla)
+    aurrekoBakanak = set(lerrokoAurrekoak)
+
+
+
+    bertsokoAurrekoak = bertsokoAurrekoak.intersection(set(lerrokoAurrekoak))
+
+
+
+#Orain tartekoaren eta aurrekoaren artean dauden elementu bereziak bilatuko ditugu,
+#gerta-apeta bezalako kasuetan, baina azkenaurreko eta haren aurrekoaren artean.
+#
+
+  aurrpos = set([buk[0] for buk in bertsokoAurrekoakZerrenda_pos])
+  bertsokoAurrekoakZerrenda = [buk[0] for buk in bertsokoAurrekoakZerrenda_pos]
+  aurreko_maizt = [(aurr, bertsokoAurrekoakZerrenda.count(aurr)) for aurr in aurrpos]
+  kengarri = min(aurreko_maizt,  key= lambda t: t[1]) #Preszindiblea den letra eta bere lerro zenbakia bilatu
+  kenezin = max(aurreko_maizt,  key= lambda t: t[1]) 
+
+
   if len(bertsokoAurrekoak)!=0:
     aurrekoKomunLuzeena = max(bertsokoAurrekoak, key=len)
   else:
     aurrekoKomunLuzeena=""
 #  print (aurrekoKomunLuzeena)
   aurrekoarenLuzera=len(aurrekoKomunLuzeena)
+
+#  print (bertsokoAurrekoakZerrenda_pos)
+  if aurrekoKomunLuzeena=="": #Ez badugu komunik topatu, badaezpada ere, errebisio malguago bat
+      for buk,indline in bertsokoAurrekoakZerrenda_pos:
+ #       print (buk, kengarri, indline)
+        if (buk==kengarri[0]):
+          unekoLerroGarbitua=bikoitiFonetizatuak[indline][:-len(kengarri[0])] #Aztertu uneko lerroa, kengarria kenduta.
+          lerrokoAurrekoak_tupla = [(aurreko,indline) for aurreko in aurrekoakFonetizatuta if unekoLerroGarbitua.endswith(aurreko)]
+          lerrokoAurrekoak = [t[0] for t in lerrokoAurrekoak_tupla]
+          aurrekoBakanak= list(set(lerrokoAurrekoak))
+
+          #Topatu dugun elementua kenezinaren berdina bada, bai!!
+          #Hori da tarteko posible bat
+          if (aurrekoBakanak[0]==kenezin[0]):
+            aurrekoKomunLuzeena=aurrekoBakanak[0]
+            bikoitiFonetizatuak[indline]=bikoitiFonetizatuak[indline][:-len(kengarri[0])]
+
+
+
+
+
+
+
+
+
 
   if bukaeraKomunLuzeena=='':
     bukaeraKomunLuzeena='0'
