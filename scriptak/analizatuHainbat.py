@@ -9,6 +9,8 @@ txt = re.sub(r'\n\s*\n\s*\n', '\n\n', txt).rstrip()
 lines = txt.split("\n")
 f.close()
 
+of = sys.argv[2] #Irteera fitxategia
+
 #print lines
 
 #print [line.rstrip()=="" for line in lines]
@@ -20,18 +22,22 @@ for line in lines:
     bertsoak.append(bertsoa)
     bertsoa=[]
   else:
-    bertsoa.append(line)
+    bertsoa.append(line.rstrip())
 bertsoak.append(bertsoa)
 print str(len(bertsoak)) + " bertso ditugu!"
 print "eta bertso bakoitzean ",[len(bertso) for bertso in bertsoak], " lerro"
 
-
+ofw = open(of, 'w')
 for bertso in bertsoak:
   try:
-    emaitza = sailkatzaileKlase.ikusiErrima("\n".join(bertso))
+#    emaitza = sailkatzaileKlase.ikusiErrima("\n".join(bertso))
+    emaitza = sailkatzaileKlase.ikusiErrimaBerria("\n".join(bertso))
   except ValueError:
     emaitza = "ERROREA"
   for lerro in bertso:
     print lerro.encode("utf8")
   print "Analisia: "+"-".join(emaitza)
-  print 
+  print
+  ofw.write("-".join(emaitza)+"\n")
+  
+ofw.close()
